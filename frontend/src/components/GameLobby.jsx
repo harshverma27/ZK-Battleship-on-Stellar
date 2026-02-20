@@ -1,17 +1,10 @@
 import React, { useState } from 'react';
 
-export default function GameLobby({ walletConnected, onCreate, onJoin }) {
+export default function GameLobby({ walletConnected, onCreate, onJoin, loading }) {
     const [joinId, setJoinId] = useState('');
-    const [creating, setCreating] = useState(false);
 
     const handleCreate = () => {
-        setCreating(true);
-        // Simulate contract call — in prod this calls create_game()
-        setTimeout(() => {
-            const gameId = Math.floor(Math.random() * 9000) + 1000;
-            onCreate(gameId);
-            setCreating(false);
-        }, 800);
+        onCreate();
     };
 
     const handleJoin = () => {
@@ -31,10 +24,10 @@ export default function GameLobby({ walletConnected, onCreate, onJoin }) {
                     className="btn btn--primary btn--lg"
                     style={{ width: '100%' }}
                     onClick={handleCreate}
-                    disabled={!walletConnected || creating}
+                    disabled={!walletConnected || loading}
                 >
-                    {creating ? (
-                        <><span className="spinner" /> Creating Game...</>
+                    {loading ? (
+                        <><span className="spinner" /> Processing...</>
                     ) : (
                         '⚓ Create Game'
                     )}
@@ -64,9 +57,9 @@ export default function GameLobby({ walletConnected, onCreate, onJoin }) {
                         id="join-game-btn"
                         className="btn btn--secondary"
                         onClick={handleJoin}
-                        disabled={!walletConnected || !joinId.trim()}
+                        disabled={!walletConnected || !joinId.trim() || loading}
                     >
-                        Join
+                        {loading ? '...' : 'Join'}
                     </button>
                 </div>
             </div>

@@ -39,7 +39,7 @@ function isValidPlacement(ship, placedShips, excludeIdx = -1) {
     return true;
 }
 
-export default function ShipPlacement({ gameId, playerNumber, onShipsPlaced }) {
+export default function ShipPlacement({ gameId, playerNumber, onShipsPlaced, loading }) {
     const [copied, setCopied] = useState(false);
 
     const handleCopyId = () => {
@@ -52,7 +52,6 @@ export default function ShipPlacement({ gameId, playerNumber, onShipsPlaced }) {
     const [activeShipIdx, setActiveShipIdx] = useState(0);
     const [orientation, setOrientation] = useState(0); // 0=horizontal, 1=vertical
     const [hoverPos, setHoverPos] = useState(null);
-    const [committing, setCommitting] = useState(false);
 
     const currentShip = SHIPS[activeShipIdx] || null;
 
@@ -87,20 +86,28 @@ export default function ShipPlacement({ gameId, playerNumber, onShipsPlaced }) {
     };
 
     const handleCommit = async () => {
-        setCommitting(true);
-        // Generate board hash (in prod: Poseidon hash via NoirJS)
+        // Generate board hash (placeholder for real Poseidon via NoirJS)
+        // Using pure-JS hash so it works on HTTP/non-localhost devices too
         const salt = Math.floor(Math.random() * 1e15);
         const boardData = placedShips.map(s => `${s.x},${s.y},${s.orientation}`).join('|');
-        // Simple hash simulation (in prod: real Poseidon hash)
-        const encoder = new TextEncoder();
-        const data = encoder.encode(boardData + salt);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const boardHash = '0x' + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        const raw = boardData + salt;
 
-        setTimeout(() => {
-            onShipsPlaced(placedShips, boardHash, salt);
-        }, 500);
+        // Simple djb2 hash — works everywhere, no crypto.subtle needed
+        let h = 5381;
+        for (let i = 0; i < raw.length; i++) {
+            h = ((h << 5) + h) ^ raw.charCodeAt(i);
+            h = h >>> 0; // keep 32-bit unsigned
+        }
+        // Expand to 32 bytes by seeding multiple rounds
+        const parts = [];
+        for (let i = 0; i < 8; i++) {
+            h = ((h << 5) + h) ^ (i * 2654435761);
+            h = h >>> 0;
+            parts.push(h.toString(16).padStart(8, '0'));
+        }
+        const boardHash = '0x' + parts.join('');
+
+        onShipsPlaced(placedShips, boardHash, salt);
     };
 
     const allPlaced = placedShips.length === SHIPS.length;
@@ -187,9 +194,9 @@ export default function ShipPlacement({ gameId, playerNumber, onShipsPlaced }) {
                         id="lock-in-btn"
                         className="btn btn--primary"
                         onClick={handleCommit}
-                        disabled={committing}
+                        disabled={loading}
                     >
-                        {committing ? (
+                        {loading ? (
                             <><span className="spinner" /> Committing...</>
                         ) : (
                             '🔒 Lock In Ships'

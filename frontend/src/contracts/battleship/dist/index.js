@@ -1,0 +1,60 @@
+import { Buffer } from "buffer";
+import { Client as ContractClient, Spec as ContractSpec, } from "@stellar/stellar-sdk/contract";
+export * from "@stellar/stellar-sdk";
+export * as contract from "@stellar/stellar-sdk/contract";
+export * as rpc from "@stellar/stellar-sdk/rpc";
+if (typeof window !== "undefined") {
+    //@ts-ignore Buffer exists
+    window.Buffer = window.Buffer || Buffer;
+}
+export const networks = {
+    testnet: {
+        networkPassphrase: "Test SDF Network ; September 2015",
+        contractId: "CBKJPCU7KI4MNAUS6P44SHNIFSZ2VQUNDJOM7ZUFE37UFKN2XA3BPG2K",
+    }
+};
+export const Errors = {
+    1: { message: "GameNotFound" },
+    2: { message: "GameFull" },
+    3: { message: "NotYourTurn" },
+    4: { message: "GameNotActive" },
+    5: { message: "InvalidCoordinate" },
+    6: { message: "AlreadyAttacked" },
+    7: { message: "InvalidProof" },
+    8: { message: "AlreadyJoined" },
+    9: { message: "BoardAlreadyCommitted" },
+    10: { message: "GameNotReady" },
+    11: { message: "NotAPlayer" }
+};
+export class Client extends ContractClient {
+    options;
+    static async deploy(
+    /** Options for initializing a Client as well as for calling a method, with extras specific to deploying. */
+    options) {
+        return ContractClient.deploy(null, options);
+    }
+    constructor(options) {
+        super(new ContractSpec(["AAAAAAAAAPZTdWJtaXQgYW4gYXR0YWNrLiBUaGUgZGVmZW5kaW5nIHBsYXllciBjYWxscyB0aGlzIHdpdGggdGhlaXIgWksgcHJvb2YuCgpGbG93OgoxLiBBdHRhY2tlciBjbGlja3MgYSBjZWxsIChvZmYtY2hhaW4gc2lnbmFsIHRvIGRlZmVuZGVyIHZpYSBwb2xsaW5nKQoyLiBEZWZlbmRlciBnZW5lcmF0ZXMgWksgcHJvb2YgYW5kIGNhbGxzIGF0dGFjaygpIHdpdGggcHJvb2YKMy4gQ29udHJhY3QgdmVyaWZpZXMgYW5kIHVwZGF0ZXMgc3RhdGUAAAAAAAZhdHRhY2sAAAAAAAYAAAAAAAAAB2dhbWVfaWQAAAAABAAAAAAAAAAIYXR0YWNrZXIAAAATAAAAAAAAAAF4AAAAAAAABAAAAAAAAAABeQAAAAAAAAQAAAAAAAAAA2hpdAAAAAABAAAAAAAAAApwcm9vZl9oYXNoAAAAAAPuAAAAIAAAAAEAAAPpAAAAAQAAAAM=",
+            "AAAAAQAAABRBIHNpbmdsZSBtb3ZlIHJlY29yZAAAAAAAAAAETW92ZQAAAAUAAAAAAAAACGF0dGFja2VyAAAAEwAAAAAAAAADaGl0AAAAAAEAAAAAAAAACnByb29mX2hhc2gAAAAAA+4AAAAgAAAAAAAAAAF4AAAAAAAABAAAAAAAAAABeQAAAAAAAAQ=",
+            "AAAABAAAAAAAAAAAAAAABUVycm9yAAAAAAAACwAAAAAAAAAMR2FtZU5vdEZvdW5kAAAAAQAAAAAAAAAIR2FtZUZ1bGwAAAACAAAAAAAAAAtOb3RZb3VyVHVybgAAAAADAAAAAAAAAA1HYW1lTm90QWN0aXZlAAAAAAAABAAAAAAAAAARSW52YWxpZENvb3JkaW5hdGUAAAAAAAAFAAAAAAAAAA9BbHJlYWR5QXR0YWNrZWQAAAAABgAAAAAAAAAMSW52YWxpZFByb29mAAAABwAAAAAAAAANQWxyZWFkeUpvaW5lZAAAAAAAAAgAAAAAAAAAFUJvYXJkQWxyZWFkeUNvbW1pdHRlZAAAAAAAAAkAAAAAAAAADEdhbWVOb3RSZWFkeQAAAAoAAAAAAAAACk5vdEFQbGF5ZXIAAAAAAAs=",
+            "AAAAAAAAACdHZXQgdGhlIGN1cnJlbnQgZ2FtZSBzdGF0ZSBmb3IgcG9sbGluZy4AAAAACGdldF9nYW1lAAAAAQAAAAAAAAAHZ2FtZV9pZAAAAAAEAAAAAQAAA+kAAAfQAAAACUdhbWVTdGF0ZQAAAAAAAAM=",
+            "AAAAAAAAABlHZXQgYWxsIG1vdmVzIGZvciBhIGdhbWUuAAAAAAAACWdldF9tb3ZlcwAAAAAAAAEAAAAAAAAAB2dhbWVfaWQAAAAABAAAAAEAAAPpAAAD6gAAB9AAAAAETW92ZQAAAAM=",
+            "AAAAAAAAACJKb2luIGFuIGV4aXN0aW5nIGdhbWUgYXMgcGxheWVyIDIuAAAAAAAJam9pbl9nYW1lAAAAAAAAAgAAAAAAAAAHZ2FtZV9pZAAAAAAEAAAAAAAAAAdwbGF5ZXIyAAAAABMAAAABAAAD6QAAA+0AAAAAAAAAAw==",
+            "AAAAAgAAAAxTdG9yYWdlIGtleXMAAAAAAAAAB0RhdGFLZXkAAAAABAAAAAAAAAAAAAAACUdhbWVDb3VudAAAAAAAAAEAAAAAAAAABEdhbWUAAAABAAAABAAAAAEAAAAAAAAACUdhbWVNb3ZlcwAAAAAAAAEAAAAEAAAAAQAAAAAAAAAGSGl0TWFwAAAAAAACAAAABAAAAAQ=",
+            "AAAAAAAAACZHZXQgdGhlIHRvdGFsIG51bWJlciBvZiBnYW1lcyBjcmVhdGVkLgAAAAAACmdhbWVfY291bnQAAAAAAAAAAAABAAAABA==",
+            "AAAAAAAAACdDcmVhdGUgYSBuZXcgZ2FtZS4gUmV0dXJucyB0aGUgZ2FtZV9pZC4AAAAAC2NyZWF0ZV9nYW1lAAAAAAEAAAAAAAAAB3BsYXllcjEAAAAAEwAAAAEAAAAE",
+            "AAAAAQAAAA9GdWxsIGdhbWUgc3RhdGUAAAAAAAAAAAlHYW1lU3RhdGUAAAAAAAALAAAAAAAAAAxjdXJyZW50X3R1cm4AAAAEAAAAAAAAAAdnYW1lX2lkAAAAAAQAAAAAAAAACm1vdmVfY291bnQAAAAAAAQAAAAAAAAADXAxX2JvYXJkX2hhc2gAAAAAAAPuAAAAIAAAAAAAAAAHcDFfaGl0cwAAAAAEAAAAAAAAAA1wMl9ib2FyZF9oYXNoAAAAAAAD7gAAACAAAAAAAAAAB3AyX2hpdHMAAAAABAAAAAAAAAAHcGxheWVyMQAAAAATAAAAAAAAAAdwbGF5ZXIyAAAAABMAAAAAAAAABnN0YXR1cwAAAAAH0AAAAApHYW1lU3RhdHVzAAAAAAAAAAAABndpbm5lcgAAAAAABA==",
+            "AAAAAAAAAEZDb21taXQgYSBib2FyZCBoYXNoLiBCb3RoIHBsYXllcnMgbXVzdCBkbyB0aGlzIGJlZm9yZSB0aGUgZ2FtZSBzdGFydHMuAAAAAAAMY29tbWl0X2JvYXJkAAAAAwAAAAAAAAAHZ2FtZV9pZAAAAAAEAAAAAAAAAAZwbGF5ZXIAAAAAABMAAAAAAAAACmJvYXJkX2hhc2gAAAAAA+4AAAAgAAAAAQAAA+kAAAPtAAAAAAAAAAM=",
+            "AAAAAgAAABBHYW1lIHN0YXR1cyBlbnVtAAAAAAAAAApHYW1lU3RhdHVzAAAAAAAEAAAAAAAAAAAAAAAHV2FpdGluZwAAAAAAAAAAAAAAAAdQbGFjaW5nAAAAAAAAAAAAAAAABkFjdGl2ZQAAAAAAAAAAAAAAAAAIQ29tcGxldGU="]), options);
+        this.options = options;
+    }
+    fromJSON = {
+        attack: (this.txFromJSON),
+        get_game: (this.txFromJSON),
+        get_moves: (this.txFromJSON),
+        join_game: (this.txFromJSON),
+        game_count: (this.txFromJSON),
+        create_game: (this.txFromJSON),
+        commit_board: (this.txFromJSON)
+    };
+}

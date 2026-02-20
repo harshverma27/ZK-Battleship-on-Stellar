@@ -1,13 +1,11 @@
 import React from 'react';
 
-const EXPLORER_BASE = 'https://stellar.expert/explorer/testnet/tx/';
-
 export default function ProofBadge({ status, txHash }) {
     if (status === 'generating') {
         return (
             <span className="proof-badge proof-badge--generating">
-                <span className="proof-badge__icon">⏳</span>
-                Generating proof...
+                <span className="spinner spinner--sm"></span>
+                Generating ZK Proof...
             </span>
         );
     }
@@ -16,13 +14,13 @@ export default function ProofBadge({ status, txHash }) {
         return (
             <span className="proof-badge proof-badge--verified">
                 <span className="proof-badge__icon">✓</span>
-                Proof verified on-chain
+                Proof Verified
                 {txHash && (
                     <>
                         {' '}[
                         <a
                             className="proof-badge__tx"
-                            href={`${EXPLORER_BASE}${txHash}`}
+                            href={`https://stellar.expert/explorer/testnet/tx/${txHash}`}
                             target="_blank"
                             rel="noopener noreferrer"
                         >
@@ -39,7 +37,7 @@ export default function ProofBadge({ status, txHash }) {
         return (
             <span className="proof-badge proof-badge--failed">
                 <span className="proof-badge__icon">✗</span>
-                Proof verification failed
+                Proof Failed
             </span>
         );
     }

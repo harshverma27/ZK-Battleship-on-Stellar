@@ -17,17 +17,20 @@ function getShipCells(ship) {
 
 export default function GamePlay({
     myShips, myAttacks, incomingAttacks,
-    playerNumber, myHits, opponentHits, onAttack, moves,
+    playerNumber, currentTurn, loading, myHits, opponentHits,
+    onAttack, onClaimTurn, moves,
 }) {
-    const isMyTurn = myAttacks.length <= incomingAttacks.length;
-    const isWaiting = myAttacks.some(a => a.proofStatus === 'generating');
+    // Turn logic: Odd turns = Player 1, Even turns = Player 2
+    const isMyTurn = (playerNumber === 1 && currentTurn % 2 !== 0) ||
+        (playerNumber === 2 && currentTurn % 2 === 0);
+
+    const isWaiting = loading || myAttacks.some(a => a.proofStatus === 'generating');
 
     // Build "my board" grid (shows my ships + incoming attacks)
     const myBoard = useMemo(() => {
         const grid = Array.from({ length: 10 }, () =>
             Array.from({ length: 10 }, () => ({ type: 'water' }))
         );
-        // Place ships
         for (const ship of myShips) {
             for (const c of getShipCells(ship)) {
                 if (c.x >= 0 && c.x < 10 && c.y >= 0 && c.y < 10) {
@@ -35,7 +38,6 @@ export default function GamePlay({
                 }
             }
         }
-        // Show incoming attacks
         for (const atk of incomingAttacks) {
             if (atk.x >= 0 && atk.x < 10 && atk.y >= 0 && atk.y < 10) {
                 grid[atk.y][atk.x] = { type: atk.hit ? 'hit' : 'miss' };
@@ -59,12 +61,10 @@ export default function GamePlay({
 
     const handleAttackClick = (x, y) => {
         if (!isMyTurn || isWaiting) return;
-        // Don't allow attacking same cell twice
         if (myAttacks.some(a => a.x === x && a.y === y)) return;
         onAttack(x, y);
     };
 
-    // Get recent moves for display
     const recentMoves = [...moves].reverse().slice(0, 10);
 
     return (
@@ -72,8 +72,21 @@ export default function GamePlay({
             {/* Turn indicator */}
             <div className="gameplay__status">
                 <div className={`gameplay__turn ${isMyTurn && !isWaiting ? 'gameplay__turn--yours' : 'gameplay__turn--theirs'}`}>
-                    {isWaiting ? '⏳ Verifying proof...' : isMyTurn ? '🎯 Your Turn — Select a target' : '⏳ Opponent is attacking...'}
+                    {isWaiting
+                        ? '⏳ Submitting move on-chain...'
+                        : isMyTurn
+                            ? '🎯 Your Turn — Click a cell on Enemy Waters to attack'
+                            : '⏳ Waiting for opponent...'}
                 </div>
+                {!isMyTurn && !isWaiting && (
+                    <button
+                        className="btn btn--primary"
+                        onClick={onClaimTurn}
+                        style={{ marginTop: '0.75rem' }}
+                    >
+                        🔄 Opponent Done → It's My Turn!
+                    </button>
+                )}
             </div>
 
             {/* Score bar */}

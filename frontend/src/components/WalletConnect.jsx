@@ -1,4 +1,9 @@
 import React, { useState } from 'react';
+import {
+    isConnected,
+    getPublicKey,
+    requestAccess,
+} from '@stellar/freighter-api';
 
 export default function WalletConnect({ address, onConnect }) {
     const [connecting, setConnecting] = useState(false);
@@ -6,19 +11,29 @@ export default function WalletConnect({ address, onConnect }) {
     const handleConnect = async () => {
         setConnecting(true);
         try {
-            // Try Freighter wallet
-            if (window.freighterApi) {
-                const { address } = await window.freighterApi.getAddress();
-                onConnect(address);
-            } else {
-                // Demo mode: generate a mock address
-                const mockAddr = 'G' + Array.from({ length: 55 }, () =>
+            // isConnected() returns bool in v2.0.0
+            const connected = await isConnected();
+
+            if (!connected) {
+                // Demo mode fallback — Freighter not installed
+                const mockAddr = 'GDEMO' + Array.from({ length: 51 }, () =>
                     'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'[Math.floor(Math.random() * 32)]
                 ).join('');
                 onConnect(mockAddr);
+                return;
             }
+
+            // Trigger Freighter popup
+            await requestAccess();
+
+            // v2.0.0: getPublicKey() returns string directly
+            const pubKey = await getPublicKey();
+            if (!pubKey) throw new Error('No address returned');
+            onConnect(pubKey);
+
         } catch (err) {
-            // Fallback to demo address
+            console.error('Wallet connect error:', err);
+            // Demo fallback on any error
             const mockAddr = 'GDEMO' + Array.from({ length: 51 }, () =>
                 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'[Math.floor(Math.random() * 32)]
             ).join('');
@@ -29,10 +44,12 @@ export default function WalletConnect({ address, onConnect }) {
     };
 
     if (address) {
+        const isDemo = address.startsWith('GDEMO');
         return (
             <div className="wallet">
                 <span className="wallet__dot" />
                 <span className="wallet__address">
+                    {isDemo ? '🎭 Demo ' : ''}
                     {address.slice(0, 6)}...{address.slice(-4)}
                 </span>
             </div>

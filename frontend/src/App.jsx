@@ -4,6 +4,7 @@ import GameLobby from './components/GameLobby';
 import ShipPlacement from './components/ShipPlacement';
 import GamePlay from './components/GamePlay';
 import GameOver from './components/GameOver';
+import { useGameContract } from './hooks/useGameContract';
 
 /**
  * Game Phases:
@@ -22,7 +23,7 @@ const INITIAL_STATE = {
     myShips: [],
     boardHash: null,
     salt: null,
-    currentTurn: 1,
+    currentTurn: 1,    // Turn 1 = Player 1's turn. Odd = P1, Even = P2.
     myHits: 0,
     opponentHits: 0,
     myAttacks: [],
@@ -32,6 +33,10 @@ const INITIAL_STATE = {
 
 export default function App() {
     const [state, setState] = useState(INITIAL_STATE);
+    const { createGame, joinGame, commitBoard, attack, loading } = useGameContract();
+
+    // NOTE: We removed the broken polling (getGameState returns undefined).
+    // Turn management is now done locally + with manual "It's My Turn" button.
 
     const updateState = useCallback((updates) => {
         setState(prev => ({ ...prev, ...updates }));
@@ -41,62 +46,86 @@ export default function App() {
         updateState({ walletAddress: address });
     }, [updateState]);
 
-    const handleCreateGame = useCallback((gameId) => {
-        updateState({ gameId, playerNumber: 1, phase: 'PLACEMENT' });
-    }, [updateState]);
+    const handleCreateGame = useCallback(async () => {
+        try {
+            const gameId = await createGame();
+            console.log('[App] Created game:', gameId);
+            updateState({ gameId, playerNumber: 1, phase: 'PLACEMENT' });
+        } catch (err) {
+            alert("Failed to create game. See console.");
+        }
+    }, [createGame, updateState]);
 
-    const handleJoinGame = useCallback((gameId) => {
-        updateState({ gameId, playerNumber: 2, phase: 'PLACEMENT' });
-    }, [updateState]);
+    const handleJoinGame = useCallback(async (gameId) => {
+        try {
+            await joinGame(gameId);
+            console.log('[App] Joined game:', gameId);
+            updateState({ gameId, playerNumber: 2, phase: 'PLACEMENT' });
+        } catch (err) {
+            alert("Failed to join game. See console.");
+        }
+    }, [joinGame, updateState]);
 
-    const handleShipsPlaced = useCallback((ships, boardHash, salt) => {
-        updateState({ myShips: ships, boardHash, salt, phase: 'WAITING' });
-        // Simulate opponent readying (in prod this polls the contract)
-        setTimeout(() => updateState({ phase: 'PLAYING' }), 2500);
-    }, [updateState]);
+    const handleShipsPlaced = useCallback(async (ships, boardHash, salt) => {
+        try {
+            await commitBoard(state.gameId, boardHash);
+            console.log('[App] Board committed for game:', state.gameId);
+            updateState({ myShips: ships, boardHash, salt, phase: 'WAITING' });
+        } catch (err) {
+            alert("Failed to commit board. See console.");
+        }
+    }, [commitBoard, state.gameId, updateState]);
 
-    const handleAttack = useCallback((x, y) => {
-        const isHit = Math.random() > 0.6;
-        const newAttack = { x, y, hit: isHit, proofStatus: 'generating', txHash: null };
+    const handleAttack = useCallback(async (x, y) => {
+        try {
+            // Dummy ZK proof (real proof would come from NoirJS)
+            const dummyProof = '0x' + Array(64).fill('0').join('');
 
-        setState(prev => ({
-            ...prev,
-            myAttacks: [...prev.myAttacks, newAttack],
-            myHits: prev.myHits + (isHit ? 1 : 0),
-        }));
+            // Optimistic UI: show attack immediately as "generating"
+            const newAttack = { x, y, hit: false, proofStatus: 'generating', txHash: null };
+            setState(prev => ({
+                ...prev,
+                myAttacks: [...prev.myAttacks, newAttack]
+            }));
 
-        // Simulate proof generation + verification
-        setTimeout(() => {
-            const txHash = '0x' + Math.random().toString(16).substr(2, 10);
+            // Submit to smart contract on-chain
+            // Note: hit is always false here since we don't have ZK proofs yet.
+            // In production, the DEFENDER would generate a proof and submit.
+            const { hit, txHash } = await attack(state.gameId, x, y, false, dummyProof);
+
             setState(prev => {
                 const attacks = [...prev.myAttacks];
-                attacks[attacks.length - 1] = { ...attacks[attacks.length - 1], proofStatus: 'verified', txHash };
+                attacks[attacks.length - 1] = {
+                    ...attacks[attacks.length - 1],
+                    hit,
+                    proofStatus: 'verified',
+                    txHash
+                };
 
-                if (prev.myHits >= 17) {
-                    return { ...prev, myAttacks: attacks, phase: 'GAME_OVER', winner: prev.playerNumber };
+                const newHits = prev.myHits + (hit ? 1 : 0);
+                if (newHits >= 17) {
+                    return { ...prev, myAttacks: attacks, myHits: newHits, phase: 'GAME_OVER', winner: prev.playerNumber };
                 }
 
-                // Simulate opponent's turn
-                const ox = Math.floor(Math.random() * 10);
-                const oy = Math.floor(Math.random() * 10);
-                const oHit = prev.myShips.some(ship => {
-                    for (let j = 0; j < ship.size; j++) {
-                        const cx = ship.orientation === 0 ? ship.x + j : ship.x;
-                        const cy = ship.orientation === 0 ? ship.y : ship.y + j;
-                        if (cx === ox && cy === oy) return true;
-                    }
-                    return false;
-                });
-                const oTx = '0x' + Math.random().toString(16).substr(2, 10);
-                const incoming = [...prev.incomingAttacks, { x: ox, y: oy, hit: oHit, proofStatus: 'verified', txHash: oTx }];
-                const oppHits = prev.opponentHits + (oHit ? 1 : 0);
-
-                if (oppHits >= 17) {
-                    return { ...prev, myAttacks: attacks, incomingAttacks: incoming, opponentHits: oppHits, phase: 'GAME_OVER', winner: prev.playerNumber === 1 ? 2 : 1 };
-                }
-                return { ...prev, myAttacks: attacks, incomingAttacks: incoming, opponentHits: oppHits };
+                // After successful attack, increment turn so this player can't attack again
+                return { ...prev, myAttacks: attacks, myHits: newHits, currentTurn: prev.currentTurn + 1 };
             });
-        }, 1500 + Math.random() * 1500);
+        } catch (err) {
+            const msg = err?.message ?? '';
+            if (msg.includes('#3') || msg.includes('NotYourTurn')) {
+                alert('⏳ Not your turn yet! Wait for your opponent to attack, then click "It\'s My Turn".');
+            } else {
+                console.error('[App] Attack error:', err);
+                alert('Attack failed. See console.');
+            }
+            // Revert optimistic insert on failure
+            setState(prev => ({ ...prev, myAttacks: prev.myAttacks.slice(0, -1) }));
+        }
+    }, [attack, state.gameId]);
+
+    // Simple local turn advance — opponent clicks this after their friend has attacked
+    const handleClaimTurn = useCallback(() => {
+        setState(prev => ({ ...prev, currentTurn: prev.currentTurn + 1 }));
     }, []);
 
     const handlePlayAgain = useCallback(() => setState(INITIAL_STATE), []);
@@ -123,6 +152,7 @@ export default function App() {
                     walletConnected={!!state.walletAddress}
                     onCreate={handleCreateGame}
                     onJoin={handleJoinGame}
+                    loading={loading}
                 />
             )}
 
@@ -131,6 +161,7 @@ export default function App() {
                     gameId={state.gameId}
                     playerNumber={state.playerNumber}
                     onShipsPlaced={handleShipsPlaced}
+                    loading={loading}
                 />
             )}
 
@@ -139,9 +170,15 @@ export default function App() {
                     <div className="spinner" style={{ width: 40, height: 40, borderWidth: 3 }} />
                     <p className="waiting-overlay__text">Waiting for opponent to place ships...</p>
                     <div className="waiting-overlay__game-id">Game #{state.gameId}</div>
-                    <p className="text-muted" style={{ fontSize: '0.8rem' }}>
-                        Share this game ID with your opponent
+                    <p className="text-muted" style={{ fontSize: '0.8rem', marginBottom: '1rem' }}>
+                        Once both players have locked in ships, click below to start
                     </p>
+                    <button
+                        className="btn btn--primary"
+                        onClick={() => updateState({ phase: 'PLAYING' })}
+                    >
+                        ⚔️ Both Ready → Start Battle!
+                    </button>
                 </div>
             )}
 
@@ -151,9 +188,12 @@ export default function App() {
                     myAttacks={state.myAttacks}
                     incomingAttacks={state.incomingAttacks}
                     playerNumber={state.playerNumber}
+                    currentTurn={state.currentTurn}
+                    loading={loading}
                     myHits={state.myHits}
                     opponentHits={state.opponentHits}
                     onAttack={handleAttack}
+                    onClaimTurn={handleClaimTurn}
                     moves={allMoves}
                 />
             )}
