@@ -12,8 +12,8 @@
   --bg-glass: rgba(17, 24, 39, 0.6);
 
   /* Ocean theme gradient */
-  --gradient-ocean: linear-gradient(135deg, #0a0e1a 0%, #0d1b2a 30%, #1b2838 60%, #0a0e1a 100%);
-  --gradient-header: linear-gradient(90deg, #06b6d4, #3b82f6, #8b5cf6);
+  --gradient-ocean: linear-gradient(to bottom, #020617 0%, #0f172a 50%, #1e1b4b 100%);
+  --gradient-header: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc);
   --gradient-btn: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
   --gradient-btn-hover: linear-gradient(135deg, #22d3ee 0%, #60a5fa 100%);
   --gradient-danger: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
@@ -96,6 +96,7 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* --- Apps & Background --- */
 body {
   font-family: var(--font-sans);
   background: var(--gradient-ocean);
@@ -103,35 +104,77 @@ body {
   min-height: 100vh;
   line-height: 1.6;
   overflow-x: hidden;
+  position: relative;
 }
 
+/* Animated Ambient Particles Layer 1 */
 body::before {
   content: '';
   position: fixed;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
-  background:
-    radial-gradient(ellipse at 20% 50%, rgba(6, 182, 212, 0.05) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 80%, rgba(139, 92, 246, 0.03) 0%, transparent 50%);
-  pointer-events: none;
+  width: 200vw;
+  height: 200vh;
+  background-image:
+    radial-gradient(2px 2px at 20px 30px, #ffffff, rgba(0, 0, 0, 0)),
+    radial-gradient(2px 2px at 40px 70px, #ffffff, rgba(0, 0, 0, 0)),
+    radial-gradient(2px 2px at 50px 160px, #ffffff, rgba(0, 0, 0, 0)),
+    radial-gradient(2px 2px at 90px 40px, #ffffff, rgba(0, 0, 0, 0)),
+    radial-gradient(2px 2px at 130px 80px, #ffffff, rgba(0, 0, 0, 0)),
+    radial-gradient(2px 2px at 160px 120px, #ffffff, rgba(0, 0, 0, 0));
+  background-repeat: repeat;
+  background-size: 200px 200px;
+  opacity: 0.15;
+  animation: drift 60s linear infinite;
   z-index: 0;
+  pointer-events: none;
+}
+
+/* Animated Ambient Particles Layer 2 */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 200vw;
+  height: 200vh;
+  background-image:
+    radial-gradient(3px 3px at 50px 50px, #38bdf8, rgba(0, 0, 0, 0)),
+    radial-gradient(3px 3px at 150px 150px, #818cf8, rgba(0, 0, 0, 0)),
+    radial-gradient(4px 4px at 250px 250px, #c084fc, rgba(0, 0, 0, 0));
+  background-repeat: repeat;
+  background-size: 300px 300px;
+  opacity: 0.2;
+  animation: drift 100s linear infinite reverse;
+  z-index: 0;
+  pointer-events: none;
+}
+
+@keyframes drift {
+  from {
+    transform: translate(0, 0);
+  }
+
+  to {
+    transform: translate(-200px, -200px);
+  }
 }
 
 #root {
   position: relative;
   z-index: 1;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 /* --- App Container --- */
 .app {
   max-width: 1400px;
+  width: 100%;
   margin: 0 auto;
-  padding: var(--spacing-lg);
-  min-height: 100vh;
+  padding: var(--spacing-2xl) var(--spacing-lg);
+  flex: 1;
   display: flex;
   flex-direction: column;
 }
@@ -139,57 +182,73 @@ body::before {
 /* --- Header --- */
 .header {
   text-align: center;
-  padding: var(--spacing-xl) 0;
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: var(--spacing-2xl);
+  padding: 0;
 }
 
 .header__title {
-  font-size: 2.5rem;
+  font-size: 3.5rem;
   font-weight: 900;
   background: var(--gradient-header);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   letter-spacing: -0.02em;
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+  filter: drop-shadow(0 0 20px rgba(56, 189, 248, 0.4));
 }
 
 .header__subtitle {
-  font-size: 1rem;
+  font-size: 1.2rem;
   color: var(--text-secondary);
-  font-weight: 400;
-  letter-spacing: 0.05em;
+  font-weight: 500;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
 .header__zk-badge {
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  background: rgba(6, 182, 212, 0.1);
-  border: 1px solid var(--border-accent);
-  padding: var(--spacing-xs) var(--spacing-md);
+  gap: var(--spacing-sm);
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: var(--spacing-sm) var(--spacing-lg);
   border-radius: var(--radius-full);
-  font-size: 0.75rem;
-  color: var(--color-cyan);
+  font-size: 0.85rem;
+  color: #38bdf8;
   font-family: var(--font-mono);
-  margin-top: var(--spacing-md);
+  margin-top: var(--spacing-lg);
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.15);
+  backdrop-filter: blur(10px);
 }
 
 /* --- Glass Card --- */
 .card {
-  background: var(--bg-glass);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-xl);
-  box-shadow: var(--shadow-lg);
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-2xl);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Internal subtle glow for all cards */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.3), transparent);
 }
 
 .card--accent {
-  border-color: var(--border-accent);
-  box-shadow: var(--shadow-lg), var(--shadow-glow-cyan);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(56, 189, 248, 0.15), 0 0 0 1px rgba(56, 189, 248, 0.2) inset;
 }
 
 /* --- Buttons --- */
@@ -615,44 +674,53 @@ body::before {
 
 /* --- Lobby --- */
 .lobby {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  display: grid;
+  grid-template-columns: 1fr 40px 1fr;
+  align-items: stretch;
   gap: var(--spacing-xl);
-  max-width: 500px;
-  margin: 0 auto;
+  max-width: 900px;
+  margin: 10vh auto 0;
+  width: 100%;
 }
 
 .lobby__divider {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--spacing-md);
-  width: 100%;
+  justify-content: center;
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .lobby__divider::before,
 .lobby__divider::after {
   content: '';
+  width: 1px;
   flex: 1;
-  height: 1px;
   background: var(--border-color);
+  margin: var(--spacing-md) 0;
 }
 
 .lobby__section {
-  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
 }
 
 .lobby__section h3 {
-  font-size: 1rem;
-  color: var(--text-secondary);
-  margin-bottom: var(--spacing-md);
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
 }
 
 .lobby__row {
   display: flex;
   gap: var(--spacing-md);
+  margin-top: auto;
 }
 
 .lobby__row .input {
