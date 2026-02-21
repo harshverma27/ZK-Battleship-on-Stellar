@@ -1,7 +1,5 @@
 # ⚓ ZK Battleship on Stellar
 
-![ZK Battleship Banner](https://i.imgur.com/yK5cWkI.png) <!-- Placeholder for a banner if desired -->
-
 > **Play Battleship against anyone in the world. They literally cannot lie about hits and misses — the blockchain and cryptography enforce it.**
 
 A fully trustless, two-player Battleship game where ship placements are committed via cryptographic hashes, every hit/miss claim is mathematically backed by a **Zero Knowledge proof**, and the **Stellar Soroban** smart contract acts as an incorruptible referee. 
