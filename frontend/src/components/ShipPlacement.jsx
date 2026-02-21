@@ -85,6 +85,45 @@ export default function ShipPlacement({ gameId, playerNumber, onShipsPlaced, loa
         setHoverPos(null);
     };
 
+    const handleRandomPlacement = () => {
+        let currentPlacements = [];
+
+        for (const shipDef of SHIPS) {
+            let placed = false;
+            let attempts = 0;
+            // Try random spots until we find a valid one (usually takes just a few tries)
+            while (!placed && attempts < 1000) {
+                const randX = Math.floor(Math.random() * 10);
+                const randY = Math.floor(Math.random() * 10);
+                const randOri = Math.random() > 0.5 ? 1 : 0;
+
+                const testShip = { ...shipDef, x: randX, y: randY, orientation: randOri };
+
+                if (isValidPlacement(testShip, currentPlacements)) {
+                    currentPlacements.push(testShip);
+                    placed = true;
+                }
+                attempts++;
+            }
+
+            // If we somehow failed after 1000 attempts, clear and start over (very rare)
+            if (!placed) {
+                currentPlacements = [];
+                break;
+            }
+        }
+
+        // Only update state if all 5 ships successfully placed
+        if (currentPlacements.length === SHIPS.length) {
+            setPlacedShips(currentPlacements);
+            setActiveShipIdx(SHIPS.length); // Disable manual placement
+            setHoverPos(null);
+        } else {
+            // Recursive retry on the rare chance of getting completely boxed in
+            handleRandomPlacement();
+        }
+    };
+
     const handleCommit = async () => {
         // Generate board hash (placeholder for real Poseidon via NoirJS)
         // Using pure-JS hash so it works on HTTP/non-localhost devices too
@@ -188,6 +227,9 @@ export default function ShipPlacement({ gameId, playerNumber, onShipsPlaced, loa
                 </button>
                 <button className="btn btn--secondary btn--sm" onClick={handleReset}>
                     ↩ Reset
+                </button>
+                <button className="btn btn--secondary btn--sm" onClick={handleRandomPlacement} disabled={allPlaced}>
+                    🎲 Randomize
                 </button>
                 {allPlaced && (
                     <button
