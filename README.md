@@ -66,7 +66,7 @@ If you want to build the smart contracts, compile the ZK circuits, and run every
 ### 2. Scaffold and Build
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/ZK-Battleship-on-Stellar.git
+git clone https://github.com/harshverma27/ZK-Battleship-on-Stellar.git
 cd ZK-Battleship-on-Stellar
 
 # Make scripts executable
