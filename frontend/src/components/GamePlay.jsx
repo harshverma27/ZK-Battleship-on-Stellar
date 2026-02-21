@@ -65,7 +65,8 @@ export default function GamePlay({
         onAttack(x, y);
     };
 
-    const recentMoves = [...moves].reverse().slice(0, 10);
+    const yourMoves = [...myAttacks].reverse();
+    const opponentMoves = [...incomingAttacks].reverse();
 
     return (
         <div className="gameplay">
@@ -112,22 +113,44 @@ export default function GamePlay({
             </div>
 
             {/* Recent moves with proof badges */}
-            {recentMoves.length > 0 && (
+            {(yourMoves.length > 0 || opponentMoves.length > 0) && (
                 <div className="move-history card">
                     <h4 className="move-history__title">📋 Move Log</h4>
-                    <div className="move-history__list">
-                        {recentMoves.map((move, idx) => (
-                            <div key={idx} className="move-history__item">
-                                <span className="move-history__coord">
-                                    {move.by === 'you' ? '🎯' : '🛡'}{' '}
-                                    {COL_LABELS[move.x]}{move.y + 1}
-                                </span>
-                                <span className={`move-history__result ${move.hit ? 'move-history__result--hit' : 'move-history__result--miss'}`}>
-                                    {move.hit ? 'HIT' : 'MISS'}
-                                </span>
-                                <ProofBadge status={move.proofStatus} txHash={move.txHash} />
+                    <div className="move-history__split">
+                        <div className="move-history__col">
+                            <h5 className="move-history__subtitle move-history__subtitle--yours">Your Attacks</h5>
+                            <div className="move-history__list">
+                                {yourMoves.length === 0 && <div className="move-history__empty">- None yet -</div>}
+                                {yourMoves.map((move, idx) => (
+                                    <div key={idx} className="move-history__item">
+                                        <span className="move-history__coord">
+                                            🎯 {COL_LABELS[move.x]}{move.y + 1}
+                                        </span>
+                                        <span className={`move-history__result ${move.hit ? 'move-history__result--hit' : 'move-history__result--miss'}`}>
+                                            {move.hit ? 'HIT' : 'MISS'}
+                                        </span>
+                                        <ProofBadge status={move.proofStatus} txHash={move.txHash} />
+                                    </div>
+                                ))}
                             </div>
-                        ))}
+                        </div>
+
+                        <div className="move-history__col">
+                            <h5 className="move-history__subtitle move-history__subtitle--enemy">Opponent Attacks</h5>
+                            <div className="move-history__list">
+                                {opponentMoves.length === 0 && <div className="move-history__empty">- None yet -</div>}
+                                {opponentMoves.map((move, idx) => (
+                                    <div key={idx} className="move-history__item">
+                                        <span className="move-history__coord">
+                                            🛡 {COL_LABELS[move.x]}{move.y + 1}
+                                        </span>
+                                        <span className={`move-history__result ${move.hit ? 'move-history__result--hit' : 'move-history__result--miss'}`}>
+                                            {move.hit ? 'HIT' : 'MISS'}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

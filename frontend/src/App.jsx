@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import WalletConnect from './components/WalletConnect';
 import GameLobby from './components/GameLobby';
@@ -40,6 +40,9 @@ const INITIAL_STATE = {
 
 export default function App() {
     const [state, setState] = useState(INITIAL_STATE);
+    const [player2Joined, setPlayer2Joined] = useState(false);
+    const [pendingCommit, setPendingCommit] = useState(null);
+    const isAttackingRef = useRef(false); // Synchronous lock against click spam
     const { createGame, joinGame, commitBoard, attack, loading } = useGameContract();
 
     const updateState = useCallback((updates) => {
@@ -48,10 +51,17 @@ export default function App() {
 
     // Socket.io sync logic
     useEffect(() => {
+        socket.on('player_joined', ({ playerNumber }) => {
+            if (playerNumber === 2) {
+                console.log('[Socket] Player 2 joined!');
+                setPlayer2Joined(true);
+            }
+        });
+
         socket.on('game_ready', () => {
             console.log('[Socket] Both players ready. Starting match!');
             setState(prev => {
-                if (prev.phase === 'WAITING') {
+                if (prev.phase === 'WAITING' || prev.phase === 'PLACEMENT') {
                     return { ...prev, phase: 'PLAYING' };
                 }
                 return prev;
@@ -83,6 +93,7 @@ export default function App() {
         });
 
         return () => {
+            socket.off('player_joined');
             socket.off('game_ready');
             socket.off('incoming_attack');
         };
@@ -108,28 +119,63 @@ export default function App() {
             await joinGame(gameId);
             console.log('[App] Joined game:', gameId);
             socket.emit('join_game', { gameId, playerNumber: 2 });
+            setPlayer2Joined(true); // I am P2, so P2 is here
             updateState({ gameId, playerNumber: 2, phase: 'PLACEMENT' });
         } catch (err) {
             alert("Failed to join game. See console.");
         }
     }, [joinGame, updateState]);
 
-    const handleShipsPlaced = useCallback(async (ships, boardHash, salt) => {
+    const executeCommit = useCallback(async (ships, boardHash, salt) => {
+        // Immediately set state so ships are visible in memory and UI goes to WAITING
+        updateState({ myShips: ships, boardHash, salt, phase: 'WAITING' });
+
         try {
+            // Wait for Stellar transaction to strictly complete first
             await commitBoard(state.gameId, boardHash);
-            console.log('[App] Board committed for game:', state.gameId);
+            console.log('[App] Board committed on chain for game:', state.gameId);
+
+            // Only after transaction confirms do we inform the sync server we are ready
             socket.emit('submit_ships', {
                 gameId: state.gameId,
                 playerNumber: state.playerNumber,
                 ships
             });
-            updateState({ myShips: ships, boardHash, salt, phase: 'WAITING' });
         } catch (err) {
-            alert("Failed to commit board. See console.");
+            console.error('[App] Failed to commit board on chain:', err);
+            alert("Transaction failed or was rejected. See console and try again.");
+            // Revert phase to allow retry
+            updateState({ phase: 'PLACEMENT' });
         }
     }, [commitBoard, state.gameId, state.playerNumber, updateState]);
 
+    const handleShipsPlaced = useCallback(async (ships, boardHash, salt) => {
+        if (state.playerNumber === 1 && !player2Joined) {
+            console.log('[App] Buffering ships... Player 2 has not joined yet.');
+            setPendingCommit({ ships, boardHash, salt });
+            updateState({ myShips: ships, boardHash, salt, phase: 'WAITING' });
+            return;
+        }
+
+        updateState({ phase: 'WAITING' }); // Optimistic UI
+        await executeCommit(ships, boardHash, salt);
+    }, [state.playerNumber, player2Joined, updateState, executeCommit]);
+
+    // Effect to flush pending commit when P2 joins
+    useEffect(() => {
+        if (player2Joined && pendingCommit) {
+            console.log('[App] Executing buffered commit now that P2 joined.');
+            executeCommit(pendingCommit.ships, pendingCommit.boardHash, pendingCommit.salt);
+            setPendingCommit(null);
+        }
+    }, [player2Joined, pendingCommit, executeCommit]);
+
     const handleAttack = useCallback(async (x, y) => {
+        if (isAttackingRef.current) {
+            console.log('[App] Attack ignored (anti-click-spam lock is active)');
+            return;
+        }
+        isAttackingRef.current = true;
         try {
             // First, ask the sync server if it's a hit
             const checkResult = await new Promise(resolve => {
@@ -161,6 +207,14 @@ export default function App() {
             // Submit to smart contract on-chain
             const { txHash } = await attack(state.gameId, x, y, isHit, dummyProof);
 
+            // ONLY AFTER blockchain confirmation do we broadcast the attack to the defender
+            socket.emit('attack_committed', {
+                gameId: state.gameId,
+                x,
+                y,
+                hit: isHit
+            });
+
             setState(prev => {
                 const attacks = [...prev.myAttacks];
                 attacks[attacks.length - 1] = {
@@ -187,6 +241,8 @@ export default function App() {
             }
             // Revert optimistic insert on failure
             setState(prev => ({ ...prev, myAttacks: prev.myAttacks.slice(0, -1) }));
+        } finally {
+            isAttackingRef.current = false;
         }
     }, [attack, state.gameId, state.playerNumber]);
 

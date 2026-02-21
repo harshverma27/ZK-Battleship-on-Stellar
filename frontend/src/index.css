@@ -637,7 +637,40 @@ body::before {
 /* --- Move History --- */
 .move-history {
   width: 100%;
-  max-width: 600px;
+  max-width: 800px;
+}
+
+.move-history__split {
+  display: flex;
+  gap: var(--spacing-xl);
+  width: 100%;
+}
+
+.move-history__col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.move-history__subtitle {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--spacing-sm);
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.move-history__subtitle--yours { color: var(--color-cyan); }
+.move-history__subtitle--enemy { color: var(--color-red); }
+
+.move-history__empty {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+  padding: var(--spacing-md) 0;
 }
 
 .move-history__title {

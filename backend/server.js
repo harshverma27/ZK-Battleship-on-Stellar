@@ -31,6 +31,7 @@ io.on('connection', (socket) => {
         game.players.push({ id: socket.id, number: playerNumber, ships: null });
 
         console.log(`Player ${playerNumber} joined game ${gameId}`);
+        io.to(`game_${gameId}`).emit('player_joined', { playerNumber });
     });
 
     socket.on('submit_ships', ({ gameId, playerNumber, ships }) => {
@@ -44,6 +45,11 @@ io.on('connection', (socket) => {
         }
 
         // Check if both players have submitted ships
+        console.log(`Checking readiness for game ${gameId}: ${game.players.length} players connected.`);
+        game.players.forEach(p => {
+            console.log(`  - Player ${p.number}: ships placed? ${p.ships !== null}`);
+        });
+
         const bothReady = game.players.length === 2 && game.players.every(p => p.ships !== null);
         if (bothReady) {
             console.log(`Both players ready for game ${gameId}, starting match!`);
@@ -88,11 +94,14 @@ io.on('connection', (socket) => {
             if (isHit) break;
         }
 
-        // Broadcast attack to defender so they see it
-        socket.to(`game_${gameId}`).emit('incoming_attack', { x, y, hit: isHit });
-
-        console.log(`Attack in game ${gameId} at ${x},${y} - Hit: ${isHit}`);
+        console.log(`Attack in game ${gameId} at ${x},${y} - Hit: ${isHit} (Sending result to attacker)`);
         callback({ hit: isHit });
+    });
+
+    // New event: called by the attacker ONLY AFTER their Stellar transaction confirms
+    socket.on('attack_committed', ({ gameId, x, y, hit }) => {
+        console.log(`Attack committed on blockchain for game ${gameId} at ${x},${y}. Broadcasting to defender.`);
+        socket.to(`game_${gameId}`).emit('incoming_attack', { x, y, hit });
     });
 
     socket.on('disconnect', () => {
