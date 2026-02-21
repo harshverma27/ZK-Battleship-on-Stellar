@@ -12,9 +12,15 @@ const SHIPS = [
 function getShipCells(ship) {
     const cells = [];
     for (let j = 0; j < ship.size; j++) {
+        let part = 'body';
+        if (j === 0) part = 'head';
+        else if (j === ship.size - 1) part = 'tail';
+
         cells.push({
             x: ship.orientation === 0 ? ship.x + j : ship.x,
             y: ship.orientation === 0 ? ship.y : ship.y + j,
+            part,
+            orientation: ship.orientation
         });
     }
     return cells;
@@ -160,7 +166,7 @@ export default function ShipPlacement({ gameId, playerNumber, onShipsPlaced, loa
         // Placed ships
         for (const ship of placedShips) {
             for (const c of getShipCells(ship)) {
-                grid[c.y][c.x] = { type: 'ship' };
+                grid[c.y][c.x] = { type: 'ship', part: c.part, orientation: c.orientation };
             }
         }
 
@@ -172,7 +178,7 @@ export default function ShipPlacement({ gameId, playerNumber, onShipsPlaced, loa
             for (const c of previewCells) {
                 if (c.x >= 0 && c.x < 10 && c.y >= 0 && c.y < 10) {
                     if (grid[c.y][c.x].type === 'water') {
-                        grid[c.y][c.x] = { type: valid ? 'preview' : 'invalid' };
+                        grid[c.y][c.x] = { type: valid ? 'preview' : 'invalid', part: c.part, orientation: c.orientation };
                     }
                 }
             }

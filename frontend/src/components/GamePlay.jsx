@@ -7,9 +7,15 @@ const COL_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
 function getShipCells(ship) {
     const cells = [];
     for (let j = 0; j < ship.size; j++) {
+        let part = 'body';
+        if (j === 0) part = 'head';
+        else if (j === ship.size - 1) part = 'tail';
+
         cells.push({
             x: ship.orientation === 0 ? ship.x + j : ship.x,
             y: ship.orientation === 0 ? ship.y : ship.y + j,
+            part,
+            orientation: ship.orientation
         });
     }
     return cells;
@@ -34,7 +40,7 @@ export default function GamePlay({
         for (const ship of myShips) {
             for (const c of getShipCells(ship)) {
                 if (c.x >= 0 && c.x < 10 && c.y >= 0 && c.y < 10) {
-                    grid[c.y][c.x] = { type: 'ship' };
+                    grid[c.y][c.x] = { type: 'ship', part: c.part, orientation: c.orientation };
                 }
             }
         }
