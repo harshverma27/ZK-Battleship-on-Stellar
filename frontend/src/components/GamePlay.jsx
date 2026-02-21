@@ -18,7 +18,7 @@ function getShipCells(ship) {
 export default function GamePlay({
     myShips, myAttacks, incomingAttacks,
     playerNumber, currentTurn, loading, myHits, opponentHits,
-    onAttack, onClaimTurn, moves,
+    onAttack, moves,
 }) {
     // Turn logic: Odd turns = Player 1, Even turns = Player 2
     const isMyTurn = (playerNumber === 1 && currentTurn % 2 !== 0) ||
@@ -76,17 +76,8 @@ export default function GamePlay({
                         ? '⏳ Submitting move on-chain...'
                         : isMyTurn
                             ? '🎯 Your Turn — Click a cell on Enemy Waters to attack'
-                            : '⏳ Waiting for opponent...'}
+                            : '⏳ Waiting for opponent to attack...'}
                 </div>
-                {!isMyTurn && !isWaiting && (
-                    <button
-                        className="btn btn--primary"
-                        onClick={onClaimTurn}
-                        style={{ marginTop: '0.75rem' }}
-                    >
-                        🔄 Opponent Done → It's My Turn!
-                    </button>
-                )}
             </div>
 
             {/* Score bar */}

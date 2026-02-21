@@ -48,6 +48,16 @@ export default function App() {
 
     // Socket.io sync logic
     useEffect(() => {
+        socket.on('game_ready', () => {
+            console.log('[Socket] Both players ready. Starting match!');
+            setState(prev => {
+                if (prev.phase === 'WAITING') {
+                    return { ...prev, phase: 'PLAYING' };
+                }
+                return prev;
+            });
+        });
+
         socket.on('incoming_attack', ({ x, y, hit }) => {
             console.log('[Socket] Incoming attack:', x, y, hit);
             setState(prev => {
@@ -65,6 +75,7 @@ export default function App() {
                     ...prev,
                     incomingAttacks: newIncoming,
                     opponentHits: newOpponentHits,
+                    currentTurn: prev.currentTurn + 1, // Auto-advance turn
                     phase,
                     winner
                 };
@@ -72,6 +83,7 @@ export default function App() {
         });
 
         return () => {
+            socket.off('game_ready');
             socket.off('incoming_attack');
         };
     }, []);
@@ -168,7 +180,7 @@ export default function App() {
         } catch (err) {
             const msg = err?.message ?? '';
             if (msg.includes('#3') || msg.includes('NotYourTurn')) {
-                alert('⏳ Not your turn yet! Wait for your opponent to attack, then click "It\'s My Turn".');
+                alert('⏳ Not your turn yet! Wait for your opponent to attack.');
             } else {
                 console.error('[App] Attack error:', err);
                 alert('Attack failed. See console.');
@@ -177,11 +189,6 @@ export default function App() {
             setState(prev => ({ ...prev, myAttacks: prev.myAttacks.slice(0, -1) }));
         }
     }, [attack, state.gameId, state.playerNumber]);
-
-    // Simple local turn advance — opponent clicks this after their friend has attacked
-    const handleClaimTurn = useCallback(() => {
-        setState(prev => ({ ...prev, currentTurn: prev.currentTurn + 1 }));
-    }, []);
 
     const handlePlayAgain = useCallback(() => setState(INITIAL_STATE), []);
 
@@ -223,17 +230,11 @@ export default function App() {
             {state.phase === 'WAITING' && (
                 <div className="card card--accent waiting-overlay">
                     <div className="spinner" style={{ width: 40, height: 40, borderWidth: 3 }} />
-                    <p className="waiting-overlay__text">Waiting for opponent to place ships...</p>
+                    <p className="waiting-overlay__text">Waiting for opponent to commit ships...</p>
                     <div className="waiting-overlay__game-id">Game #{state.gameId}</div>
-                    <p className="text-muted" style={{ fontSize: '0.8rem', marginBottom: '1rem' }}>
-                        Once both players have locked in ships, click below to start
+                    <p className="text-muted" style={{ fontSize: '0.8rem', marginTop: '1rem' }}>
+                        The game will start automatically when both players are ready.
                     </p>
-                    <button
-                        className="btn btn--primary"
-                        onClick={() => updateState({ phase: 'PLAYING' })}
-                    >
-                        ⚔️ Both Ready → Start Battle!
-                    </button>
                 </div>
             )}
 
@@ -248,7 +249,6 @@ export default function App() {
                     myHits={state.myHits}
                     opponentHits={state.opponentHits}
                     onAttack={handleAttack}
-                    onClaimTurn={handleClaimTurn}
                     moves={allMoves}
                 />
             )}
