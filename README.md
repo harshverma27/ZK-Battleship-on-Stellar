@@ -1,127 +1,149 @@
 # ⚓ ZK Battleship on Stellar
 
-> Play Battleship against anyone in the world. They literally cannot lie about hits and misses — the blockchain enforces it.
+![ZK Battleship Banner](https://i.imgur.com/yK5cWkI.png) <!-- Placeholder for a banner if desired -->
 
-A two-player Battleship game where ship placements are committed via cryptographic hash, every hit/miss claim is backed by a **Zero Knowledge proof**, and the **Stellar Soroban** smart contract acts as a trustless referee. No server. No trust required.
+> **Play Battleship against anyone in the world. They literally cannot lie about hits and misses — the blockchain and cryptography enforce it.**
 
-**🏆 Built for the Stellar Hacks: ZK Gaming Hackathon**
+A fully trustless, two-player Battleship game where ship placements are committed via cryptographic hashes, every hit/miss claim is mathematically backed by a **Zero Knowledge proof**, and the **Stellar Soroban** smart contract acts as an incorruptible referee. 
+
+No trusting a central game server. No trusting your opponent. 
 
 ---
 
-## Architecture
+## 🏆 Built for the Stellar Hacks: ZK Gaming Hackathon
 
+This project demonstrates the power of combining Stellar's fast, low-cost smart contracts (Soroban) with client-side Zero Knowledge cryptography (Noir) to build a game that would traditionally require a trusted centralized authority.
+
+---
+
+## 🏗 Architecture
+
+```text
+Player Browser (React + Vite)
+│
+├── 🎮 Game UI
+│   ├── Interactive Ship placement grid
+│   ├── Dual attack grids with cohesive CSS ship rendering
+│   └── ⏳ → ✓ Real-time Proof Status Badges
+│
+├── 🔐 Noir ZK Circuits (Client-side WASM)
+│   ├── Board Circuit: Validates grid boundaries & calculates Poseidon hash commitment
+│   └── Shot Circuit: Proves hit/miss mathematically without revealing ship coordinates
+│
+└── ⛓️ Stellar Soroban Smart Contract (Testnet)
+    ├── Stores player board hash commitments
+    ├── Verifies attack ZK proofs natively on-chain
+    ├── Manages turns, hit tracking, and win conditions
+    └── Enforces game rules completely trustlessly
 ```
-Player Browser
-│
-├── React Frontend (Vite)
-│   ├── Ship placement grid
-│   ├── Attack grid with proof badges
-│   └── ⏳ → ✓ Proof status indicators
-│
-├── Noir ZK Circuits (client-side WASM)
-│   ├── Board Circuit: validates ship placement + Poseidon hash commitment
-│   └── Shot Circuit: proves hit/miss without revealing ship positions
-│
-└── Stellar Soroban Contract
-    ├── Board hash commitments
-    ├── Attack verification with ZK proofs  
-    ├── Game state management
-    └── Game hub integration (start_game / end_game)
-```
 
-## How ZK Makes This Work
+---
 
-Without ZK, online Battleship requires trusting a server or your opponent. With ZK:
+## 🔑 Prerequisites & Wallet Setup
 
-- ❌ You cannot **lie** about whether a shot hit your ship
-- ❌ You cannot **rearrange ships** mid-game  
-- ❌ You cannot **dispute** the outcome
-- ✅ Every move is **verifiable on-chain**
+To play or develop ZK Battleship, you **must** have the Freighter browser extension installed and configured for the Stellar Testnet.
 
-## Quick Start
+1. **Install Freighter:** Download the [Freighter Wallet Extension](https://www.freighter.app/) for your browser.
+2. **Create an Account:** Follow the setup wizard to create a new wallet.
+3. **Switch to Testnet:** 
+   * Open the Freighter extension.
+   * Click the gear icon (Settings) ⚙️
+   * Select **Network** and switch it to **Testnet**.
+4. **Fund your Account:**
+   * Go to the [Stellar Testnet Faucet](https://laboratory.stellar.org/#account-creator?network=test).
+   * Paste your Freighter public key and fund it with friendbot to receive test XLM.
 
-### Prerequisites
+---
 
+## 🛠 Development Setup
+
+If you want to build the smart contracts, compile the ZK circuits, and run everything from scratch, follow these steps.
+
+### 1. System Requirements
 - [Rust](https://rustup.rs/) (1.70+)
 - [Node.js](https://nodejs.org/) (v18+)
-- [Nargo](https://noir-lang.org/docs/getting_started/installation/) (Noir compiler)
-- [Stellar CLI](https://soroban.stellar.org/docs/getting-started/setup) (optional, for deployment)
+- [Nargo](https://noir-lang.org/docs/getting_started/installation/) (Noir compiler, tested with `v1.0.0-beta.18`+)
+- [Stellar CLI](https://soroban.stellar.org/docs/getting-started/setup)
 
-### Setup
-
+### 2. Scaffold and Build
 ```bash
-# Clone the repo  
+# Clone the repository
 git clone https://github.com/YOUR_USERNAME/ZK-Battleship-on-Stellar.git
 cd ZK-Battleship-on-Stellar
 
-# Run setup (installs deps, builds contracts)
-chmod +x scripts/setup.sh
-./scripts/setup.sh
+# Make scripts executable
+chmod +x scripts/setup.sh scripts/deploy.sh
 
-# Start the frontend
-cd frontend
-npm run dev
+# Install dependencies and build Soroban contracts
+./scripts/setup.sh
 ```
 
-Open `http://localhost:5173` in two browser tabs to play against yourself.
-
-### Deploy to Testnet
+### 3. Deploy Contract to Testnet
+You need to deploy the Soroban contract to the Stellar Testnet so the frontend can interact with it.
 
 ```bash
-chmod +x scripts/deploy.sh
+# Deploys the contract and automatically configures frontend/.env with the new contract IDs
 ./scripts/deploy.sh
 ```
 
-## Project Structure
+---
 
+## 🚀 Running the Game Locally
+
+Once deployment is complete (or if you are just running the frontend against an already deployed contract), you need to start both the WebSocket Sync Server and the React Frontend.
+
+### Terminal 1: WebSocket Sync Server
+We use a lightweight, off-chain WebSocket server simply to propagate events (like "player joined" or "attack pending") between browsers in real-time. **Crucially, this server has no authority over the game logic—it only relays messages. The Soroban contract is the ultimate source of truth.**
+
+```bash
+cd backend
+npm install
+node server.js
 ```
-├── circuits/               # Noir ZK circuits
-│   ├── board/              # Board validation + commitment
-│   └── shot/               # Shot hit/miss verification
-├── contracts/              # Soroban smart contracts
-│   └── battleship/         # Main game contract
-├── frontend/               # React + Vite frontend
-│   └── src/
-│       ├── components/     # React components
-│       └── index.css       # Design system
-└── scripts/                # Build & deploy scripts
+*The server will start on `http://localhost:3001`.*
+
+### Terminal 2: React Frontend
+Start the Vite development server.
+
+```bash
+cd frontend
+npm install
+npm run dev
 ```
+*The React app will start on `http://localhost:5173`.*
 
-## Circuit Design
+---
 
-### Board Circuit
-Proves your ship placement is valid and matches your committed hash:
-- Ships within 10×10 grid bounds
-- No overlapping ships
-- Correct ship sizes (5, 4, 3, 3, 2)
-- Poseidon(ships + salt) == committed_hash
+## 🎮 How to Play (Testing with Two Players)
 
-### Shot Circuit  
-Proves a shot result without revealing your board:
-- Board matches previously committed hash
-- Shot coordinate is within bounds
-- Claimed hit/miss matches actual board state
+To simulate a real game, you need two separate browsers (or one normal window and one Incognito/Private window), **each with an independent Freighter wallet account** funded on the Testnet.
 
-## Smart Contract
+1. **Player 1:** 
+   * Open `http://localhost:5173`.
+   * Connect Freighter Wallet.
+   * Click **Create Game**.
+   * Copy the generated `Game ID`.
+2. **Player 2:**
+   * Open `http://localhost:5173` in a different browser/profile.
+   * Connect a *different* Freighter Wallet account.
+   * Enter the `Game ID` provided by Player 1 and click **Join Game**.
+3. **Placement:**
+   * Both players drag and drop their ships, or use the **🎲 Randomize** button.
+   * Click **🔒 Lock In Ships**. This calculates a Poseidon Hash commitment of your board and submits it to the Stellar testnet.
+4. **Battle!**
+   * Take turns attacking coordinates on the Enemy Waters grid.
+   * Watch the real-time proof badges verify the cryptographically secure hits and misses!
 
-The Soroban contract stores:
-- Player board hash commitments
-- Move history with proof hashes
-- Game state (turns, hits, winner)
+---
 
-Every hit claim is backed by a proof hash on-chain. The contract enforces turn order and win conditions (17 ship cells = victory).
+## 🧠 How ZK Makes This Trustless
 
-## Tech Stack
+Without Zero Knowledge proofs, online Battleship requires trusting a centralized server to hold the board states and report hits honestly. With ZK Battleship:
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 18, Vite |
-| ZK Circuits | Noir, Barretenberg (WASM) |
-| Smart Contract | Rust, Soroban SDK |
-| Blockchain | Stellar (Protocol 25) |
-| Wallet | Freighter |
-| Hash Function | Poseidon (ZK-friendly) |
+- ❌ You **cannot lie** about whether a shot hit your ship. The ZK circuit proves the mathematical relationship between the shot coordinate, your hidden ship array, and your public board hash.
+- ❌ You **cannot rearrange ships** mid-game. Your board hash is permanently committed to the Soroban contract at the start of the game.
+- ❌ You **cannot dispute** the outcome. Every verified hit increments an on-chain counter. Once a player reaches 17 hits, the contract declares them the winner.
+- ✅ Every move is **fully verifiable on-chain**.
 
 ## License
-
 MIT
