@@ -15,8 +15,25 @@ const io = new Server(server, {
 // Map<gameId, { players: [{ id, number, ships }], attacks: [] }>
 const games = new Map();
 
+// Map<roomId, gameId>
+const rooms = new Map();
+
 io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
+
+    socket.on('create_room', ({ roomId, gameId }) => {
+        rooms.set(roomId, gameId);
+        console.log(`Created mapped room ${roomId} for Soroban Game ID ${gameId}`);
+    });
+
+    socket.on('lookup_room', (roomId, callback) => {
+        if (rooms.has(roomId)) {
+            callback({ success: true, gameId: rooms.get(roomId) });
+        } else {
+            console.log(`Failed lookup for room ${roomId}`);
+            callback({ success: false, error: 'Room not found' });
+        }
+    });
 
     socket.on('join_game', ({ gameId, playerNumber }) => {
         socket.join(`game_${gameId}`);

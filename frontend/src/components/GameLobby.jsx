@@ -9,7 +9,7 @@ export default function GameLobby({ walletConnected, onCreate, onJoin, loading }
 
     const handleJoin = () => {
         if (!joinId.trim()) return;
-        onJoin(parseInt(joinId, 10));
+        onJoin(joinId);
     };
 
     return (
@@ -17,7 +17,7 @@ export default function GameLobby({ walletConnected, onCreate, onJoin, loading }
             <div className="card card--accent lobby__section">
                 <h3>🚀 Create New Game</h3>
                 <p className="text-muted mb-md" style={{ fontSize: '0.85rem' }}>
-                    Start a new game and share the ID with your opponent
+                    Start a new game and share the Room Code with your opponent
                 </p>
                 <button
                     id="create-game-btn"
@@ -48,7 +48,9 @@ export default function GameLobby({ walletConnected, onCreate, onJoin, loading }
                         id="game-id-input"
                         className="input"
                         type="text"
-                        placeholder="Enter Game ID"
+                        placeholder="Enter 6-char Room Code"
+                        style={{ textTransform: 'uppercase', letterSpacing: '0.1em' }}
+                        maxLength={6}
                         value={joinId}
                         onChange={(e) => setJoinId(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleJoin()}

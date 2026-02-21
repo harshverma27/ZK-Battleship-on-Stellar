@@ -26,6 +26,7 @@ const INITIAL_STATE = {
     phase: 'LOBBY',
     walletAddress: null,
     gameId: null,
+    roomId: null,
     playerNumber: null,
     myShips: [],
     boardHash: null,
@@ -106,24 +107,49 @@ export default function App() {
     const handleCreateGame = useCallback(async () => {
         try {
             const gameId = await createGame();
-            console.log('[App] Created game:', gameId);
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let roomId = '';
+            for (let i = 0; i < 6; i++) {
+                roomId += characters.charAt(Math.floor(Math.random() * characters.length));
+            }
+            console.log(`[App] Created game: ${gameId}, Room: ${roomId}`);
+            socket.emit('create_room', { roomId, gameId });
             socket.emit('join_game', { gameId, playerNumber: 1 });
-            updateState({ gameId, playerNumber: 1, phase: 'PLACEMENT' });
+
+            // Show the room code splash screen first
+            updateState({ gameId, roomId, playerNumber: 1, phase: 'ROOM_CODE_SPLASH' });
+
+            // After 5 seconds, transition to PLACEMENT
+            setTimeout(() => {
+                setState(prev => prev.phase === 'ROOM_CODE_SPLASH' ? { ...prev, phase: 'PLACEMENT' } : prev);
+            }, 5000);
+
         } catch (err) {
             alert("Failed to create game. See console.");
         }
     }, [createGame, updateState]);
 
-    const handleJoinGame = useCallback(async (gameId) => {
-        try {
-            await joinGame(gameId);
-            console.log('[App] Joined game:', gameId);
-            socket.emit('join_game', { gameId, playerNumber: 2 });
-            setPlayer2Joined(true); // I am P2, so P2 is here
-            updateState({ gameId, playerNumber: 2, phase: 'PLACEMENT' });
-        } catch (err) {
-            alert("Failed to join game. See console.");
-        }
+    const handleJoinGame = useCallback((roomId) => {
+        if (!roomId || typeof roomId !== 'string') return;
+        const upperRoomId = roomId.trim().toUpperCase();
+
+        socket.emit('lookup_room', upperRoomId, async (res) => {
+            if (!res.success) {
+                alert("Room not found! Check the code and try again.");
+                return;
+            }
+            try {
+                const gameId = res.gameId;
+                await joinGame(gameId);
+                console.log('[App] Joined game:', gameId, 'via Room:', upperRoomId);
+                socket.emit('join_game', { gameId, playerNumber: 2 });
+                setPlayer2Joined(true); // I am P2, so P2 is here
+                updateState({ gameId, roomId: upperRoomId, playerNumber: 2, phase: 'PLACEMENT' });
+            } catch (err) {
+                console.error('[App] Join error:', err);
+                alert("Failed to join game. Check your wallet connection or see console.");
+            }
+        });
     }, [joinGame, updateState]);
 
     const executeCommit = useCallback(async (ships, boardHash, salt) => {
@@ -263,7 +289,9 @@ export default function App() {
                 </span>
             </header>
 
-            <WalletConnect address={state.walletAddress} onConnect={handleWalletConnect} />
+            <div className="wallet-container">
+                <WalletConnect address={state.walletAddress} onConnect={handleWalletConnect} />
+            </div>
 
             {state.phase === 'LOBBY' && (
                 <GameLobby
@@ -274,9 +302,30 @@ export default function App() {
                 />
             )}
 
+            {state.phase === 'ROOM_CODE_SPLASH' && (
+                <div className="card card--accent splash-screen">
+                    <h2 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Room Created!</h2>
+                    <p className="text-muted" style={{ fontSize: '1.2rem', marginBottom: '2rem' }}>
+                        Share this code with your opponent:
+                    </p>
+                    <div className="waiting-overlay__game-id" style={{
+                        fontSize: '4rem',
+                        padding: '1rem 3rem',
+                        letterSpacing: '0.2em',
+                        animation: 'explode 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards'
+                    }}>
+                        {state.roomId}
+                    </div>
+                    <p className="text-muted" style={{ marginTop: '2rem', animation: 'proofPulse 1.5s ease-in-out infinite' }}>
+                        Moving to ship placement in 5s...
+                    </p>
+                </div>
+            )}
+
             {state.phase === 'PLACEMENT' && (
                 <ShipPlacement
                     gameId={state.gameId}
+                    roomId={state.roomId}
                     playerNumber={state.playerNumber}
                     onShipsPlaced={handleShipsPlaced}
                     loading={loading}
@@ -287,7 +336,7 @@ export default function App() {
                 <div className="card card--accent waiting-overlay">
                     <div className="spinner" style={{ width: 40, height: 40, borderWidth: 3 }} />
                     <p className="waiting-overlay__text">Waiting for opponent to commit ships...</p>
-                    <div className="waiting-overlay__game-id">Game #{state.gameId}</div>
+                    <div className="waiting-overlay__game-id">Room Code: {state.roomId || `#${state.gameId}`}</div>
                     <p className="text-muted" style={{ fontSize: '0.8rem', marginTop: '1rem' }}>
                         The game will start automatically when both players are ready.
                     </p>

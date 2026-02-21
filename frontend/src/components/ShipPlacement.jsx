@@ -45,11 +45,11 @@ function isValidPlacement(ship, placedShips, excludeIdx = -1) {
     return true;
 }
 
-export default function ShipPlacement({ gameId, playerNumber, onShipsPlaced, loading }) {
+export default function ShipPlacement({ gameId, roomId, playerNumber, onShipsPlaced, loading }) {
     const [copied, setCopied] = useState(false);
 
     const handleCopyId = () => {
-        navigator.clipboard.writeText(String(gameId)).then(() => {
+        navigator.clipboard.writeText(String(roomId || gameId)).then(() => {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         });
@@ -189,18 +189,18 @@ export default function ShipPlacement({ gameId, playerNumber, onShipsPlaced, loa
 
     return (
         <div className="placement">
-            {/* Game ID banner — so Player 1 can share with Player 2 */}
-            {gameId && (
+            {/* Room Code banner — so Player 1 can share with Player 2 */}
+            {(roomId || gameId) && (
                 <div className="card card--accent" style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     gap: 'var(--spacing-md)', padding: 'var(--spacing-md) var(--spacing-xl)',
                     width: '100%', maxWidth: 600, flexWrap: 'wrap'
                 }}>
                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                        {playerNumber === 1 ? '📤 Share this Game ID with your opponent:' : '🎮 Game ID:'}
+                        {playerNumber === 1 ? '📤 Share this Room Code with your opponent:' : '🎮 Room Code:'}
                     </span>
-                    <span className="waiting-overlay__game-id" style={{ padding: '8px 20px', fontSize: '1.2rem' }}>
-                        {gameId}
+                    <span className="waiting-overlay__game-id" style={{ padding: '8px 20px', fontSize: '1.2rem', letterSpacing: '0.2em' }}>
+                        {roomId || gameId}
                     </span>
                     <button className="btn btn--secondary btn--sm" onClick={handleCopyId}>
                         {copied ? '✓ Copied!' : '📋 Copy'}

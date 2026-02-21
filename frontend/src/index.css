@@ -569,12 +569,17 @@ body::before {
 }
 
 /* --- Wallet Button --- */
+.wallet-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: var(--spacing-lg);
+}
+
 .wallet {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
-  justify-content: flex-end;
-  margin-bottom: var(--spacing-lg);
 }
 
 .wallet__address {
@@ -1015,14 +1020,25 @@ body::before {
 }
 
 .waiting-overlay__game-id {
+  background: rgba(0, 0, 0, 0.4);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
   font-family: var(--font-mono);
   font-size: 1.5rem;
-  font-weight: 700;
+  letter-spacing: 0.1em;
   color: var(--color-cyan);
-  background: rgba(6, 182, 212, 0.1);
-  padding: var(--spacing-md) var(--spacing-xl);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-accent);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  box-shadow: inset 0 0 20px rgba(6, 182, 212, 0.1);
+  margin: var(--spacing-md) 0;
+}
+
+.splash-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
 }
 
 /* --- Scrollbar --- */
