@@ -1,10 +1,17 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { io } from 'socket.io-client';
 import WalletConnect from './components/WalletConnect';
 import GameLobby from './components/GameLobby';
 import ShipPlacement from './components/ShipPlacement';
 import GamePlay from './components/GamePlay';
 import GameOver from './components/GameOver';
 import { useGameContract } from './hooks/useGameContract';
+
+// Connect to local sync server
+// NOTE: For player 2 on another device, they need to connect to Player 1's IP
+// We'll use window.location.hostname so it works for whoever is hosting
+const SOCKET_URL = `http://${window.location.hostname}:3001`;
+const socket = io(SOCKET_URL);
 
 /**
  * Game Phases:
@@ -35,11 +42,38 @@ export default function App() {
     const [state, setState] = useState(INITIAL_STATE);
     const { createGame, joinGame, commitBoard, attack, loading } = useGameContract();
 
-    // NOTE: We removed the broken polling (getGameState returns undefined).
-    // Turn management is now done locally + with manual "It's My Turn" button.
-
     const updateState = useCallback((updates) => {
         setState(prev => ({ ...prev, ...updates }));
+    }, []);
+
+    // Socket.io sync logic
+    useEffect(() => {
+        socket.on('incoming_attack', ({ x, y, hit }) => {
+            console.log('[Socket] Incoming attack:', x, y, hit);
+            setState(prev => {
+                const newIncoming = [...prev.incomingAttacks, { x, y, hit }];
+                const newOpponentHits = prev.opponentHits + (hit ? 1 : 0);
+
+                let phase = prev.phase;
+                let winner = prev.winner;
+                if (newOpponentHits >= 17) {
+                    phase = 'GAME_OVER';
+                    winner = prev.playerNumber === 1 ? 2 : 1;
+                }
+
+                return {
+                    ...prev,
+                    incomingAttacks: newIncoming,
+                    opponentHits: newOpponentHits,
+                    phase,
+                    winner
+                };
+            });
+        });
+
+        return () => {
+            socket.off('incoming_attack');
+        };
     }, []);
 
     const handleWalletConnect = useCallback((address) => {
@@ -50,6 +84,7 @@ export default function App() {
         try {
             const gameId = await createGame();
             console.log('[App] Created game:', gameId);
+            socket.emit('join_game', { gameId, playerNumber: 1 });
             updateState({ gameId, playerNumber: 1, phase: 'PLACEMENT' });
         } catch (err) {
             alert("Failed to create game. See console.");
@@ -60,6 +95,7 @@ export default function App() {
         try {
             await joinGame(gameId);
             console.log('[App] Joined game:', gameId);
+            socket.emit('join_game', { gameId, playerNumber: 2 });
             updateState({ gameId, playerNumber: 2, phase: 'PLACEMENT' });
         } catch (err) {
             alert("Failed to join game. See console.");
@@ -70,39 +106,58 @@ export default function App() {
         try {
             await commitBoard(state.gameId, boardHash);
             console.log('[App] Board committed for game:', state.gameId);
+            socket.emit('submit_ships', {
+                gameId: state.gameId,
+                playerNumber: state.playerNumber,
+                ships
+            });
             updateState({ myShips: ships, boardHash, salt, phase: 'WAITING' });
         } catch (err) {
             alert("Failed to commit board. See console.");
         }
-    }, [commitBoard, state.gameId, updateState]);
+    }, [commitBoard, state.gameId, state.playerNumber, updateState]);
 
     const handleAttack = useCallback(async (x, y) => {
         try {
+            // First, ask the sync server if it's a hit
+            const checkResult = await new Promise(resolve => {
+                socket.emit('attack_check', {
+                    gameId: state.gameId,
+                    attackerNumber: state.playerNumber,
+                    x, y
+                }, resolve);
+            });
+
+            if (checkResult.error) {
+                alert(`Sync Error: ${checkResult.error}. Opponent might not be connected.`);
+                return;
+            }
+
+            console.log('[Socket] Evaluated attack at', x, y, 'Result:', checkResult);
+            const isHit = checkResult.hit;
+
             // Dummy ZK proof (real proof would come from NoirJS)
             const dummyProof = '0x' + Array(64).fill('0').join('');
 
             // Optimistic UI: show attack immediately as "generating"
-            const newAttack = { x, y, hit: false, proofStatus: 'generating', txHash: null };
+            const newAttack = { x, y, hit: isHit, proofStatus: 'generating', txHash: null };
             setState(prev => ({
                 ...prev,
                 myAttacks: [...prev.myAttacks, newAttack]
             }));
 
             // Submit to smart contract on-chain
-            // Note: hit is always false here since we don't have ZK proofs yet.
-            // In production, the DEFENDER would generate a proof and submit.
-            const { hit, txHash } = await attack(state.gameId, x, y, false, dummyProof);
+            const { txHash } = await attack(state.gameId, x, y, isHit, dummyProof);
 
             setState(prev => {
                 const attacks = [...prev.myAttacks];
                 attacks[attacks.length - 1] = {
                     ...attacks[attacks.length - 1],
-                    hit,
                     proofStatus: 'verified',
                     txHash
                 };
 
-                const newHits = prev.myHits + (hit ? 1 : 0);
+                const newHits = prev.myHits + (isHit ? 1 : 0);
                 if (newHits >= 17) {
                     return { ...prev, myAttacks: attacks, myHits: newHits, phase: 'GAME_OVER', winner: prev.playerNumber };
                 }
@@ -121,7 +176,7 @@ export default function App() {
             // Revert optimistic insert on failure
             setState(prev => ({ ...prev, myAttacks: prev.myAttacks.slice(0, -1) }));
         }
-    }, [attack, state.gameId]);
+    }, [attack, state.gameId, state.playerNumber]);
 
     // Simple local turn advance — opponent clicks this after their friend has attacked
     const handleClaimTurn = useCallback(() => {
