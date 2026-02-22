@@ -12,6 +12,12 @@ No trusting a central game server. No trusting your opponent.
 
 This project demonstrates the power of combining Stellar's fast, low-cost smart contracts (Soroban) with client-side Zero Knowledge cryptography (Noir) to build a game that would traditionally require a trusted centralized authority.
 
+### 🎯 Hackathon Requirements Satisfied
+- **A ZK-Powered Mechanic:** Hit and miss validations are entirely generated natively on-client via Noir proofs.
+- **Onchain Component (Game Hub):** The underlying smart contract holds the state and is fully deployed to the Stellar Testnet. Additionally, it accurately tracks its games by directly invoking `start_game()` and `end_game()` against the provided testnet Game Hub `CB4VZAT2U3UC6XFK3N23SKRF2NDCMP3QHJYMCHHFMZO7MRQO6DQ2EMYG`.
+- **A Front End:** Readily playable in any Web3-enabled React dashboard.
+- **Open-source Repo:** Everything from the ZK circuits, frontend, and Soroban rust code is publicly available here.
+
 ---
 
 ## 🏗 Architecture
@@ -32,8 +38,8 @@ Player Browser (React + Vite)
     ├── Stores player board hash commitments
     ├── Verifies attack ZK proofs natively on-chain
     ├── Manages turns, hit tracking, and win conditions
-    └── Enforces game rules completely trustlessly
-```
+    ├── Enforces game rules completely trustlessly
+    └── 🔗 **Game Hub Integration:** Automatically invokes `start_game()` and `end_game()` on the testnet Game Hub registry (`CB4VZAT2U3UC6XFK...`).
 
 ---
 
@@ -77,12 +83,14 @@ chmod +x scripts/setup.sh scripts/deploy.sh
 ```
 
 ### 3. Deploy Contract to Testnet
-You need to deploy the Soroban contract to the Stellar Testnet so the frontend can interact with it.
+You need to deploy the Soroban contract to the Stellar Testnet so the frontend can interact with it. Our deployment script handles compiling, instantiating the contract on testnet, *and* automatically initializing it with the required Hackathon Game Hub address.
 
 ```bash
-# Deploys the contract and automatically configures frontend/.env with the new contract IDs
+# Deploys the contract, initializes the Game Hub connection, and automatically configures frontend/.env with the new contract IDs
 ./scripts/deploy.sh
 ```
+
+> **Note on Timeouts:** The Stellar Testnet can occasionally experience high loads, resulting in a `transaction submission timeout` error during deployment. If this happens, simply run the `./scripts/deploy.sh` script again!
 
 ---
 

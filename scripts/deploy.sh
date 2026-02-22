@@ -4,6 +4,9 @@
 
 set -e
 
+# Ensure we're running from the project root
+cd "$(dirname "$0")/.."
+
 echo "🚀 Deploying ZK Battleship to Stellar Testnet"
 echo "=============================================="
 
@@ -53,4 +56,17 @@ echo "VITE_NETWORK_PASSPHRASE=Test SDF Network ; September 2015" >> frontend/.en
 
 echo "📝 Contract ID written to frontend/.env"
 echo ""
+
+echo "🔗 Initializing Game Hub Contract..."
+stellar contract invoke \
+  --id "$CONTRACT_ID" \
+  --source deployer \
+  --network testnet \
+  -- \
+  init_hub \
+  --hub CB4VZAT2U3UC6XFK3N23SKRF2NDCMP3QHJYMCHHFMZO7MRQO6DQ2EMYG
+
+echo "✅ Game Hub initialized!"
+echo ""
+
 echo "   Start the frontend: cd frontend && npm run dev"

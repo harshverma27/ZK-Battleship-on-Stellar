@@ -1,7 +1,7 @@
 #![no_std]
 use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype, symbol_short,
-    Address, BytesN, Env, Vec, log,
+    Address, BytesN, Env, Vec, log, Symbol, IntoVal,
 };
 
 /// Game status enum
@@ -49,6 +49,7 @@ pub enum DataKey {
     Game(u32),                    // GameState for a game_id
     GameMoves(u32),               // Vec<Move> for a game_id
     HitMap(u32, u32),             // (game_id, player) -> bitfield of hits received
+    HubAddress,                   // Address - The game hub contract
 }
 
 #[contracterror]
@@ -76,6 +77,11 @@ pub struct BattleshipContract;
 
 #[contractimpl]
 impl BattleshipContract {
+
+    /// Initialize with Game Hub address
+    pub fn init_hub(env: Env, hub: Address) {
+        env.storage().instance().set(&DataKey::HubAddress, &hub);
+    }
 
     /// Create a new game. Returns the game_id.
     pub fn create_game(env: Env, player1: Address) -> u32 {
@@ -200,6 +206,26 @@ impl BattleshipContract {
                 (symbol_short!("game"), symbol_short!("start")),
                 game_id,
             );
+
+            // Notify Hub if initialized
+            if let Some(hub) = env.storage().instance().get::<_, Address>(&DataKey::HubAddress) {
+                let session_id: u32 = game_id;
+                let p1_points: i128 = 100; // placeholder points
+                let p2_points: i128 = 100;
+                env.invoke_contract::<()>(
+                    &hub,
+                    &Symbol::new(&env, "start_game"),
+                    soroban_sdk::vec![
+                        &env,
+                        env.current_contract_address().into_val(&env),
+                        session_id.into_val(&env),
+                        game.player1.clone().into_val(&env),
+                        game.player2.clone().into_val(&env),
+                        p1_points.into_val(&env),
+                        p2_points.into_val(&env)
+                    ],
+                );
+            }
         }
 
         env.storage().instance().set(&DataKey::Game(game_id), &game);
@@ -291,6 +317,21 @@ impl BattleshipContract {
                 (symbol_short!("game"), symbol_short!("end")),
                 (game_id, 1u32),
             );
+
+            // Notify Hub if initialized
+            if let Some(hub) = env.storage().instance().get::<_, Address>(&DataKey::HubAddress) {
+                let session_id: u32 = game_id;
+                let p1_won = true;
+                env.invoke_contract::<()>(
+                    &hub,
+                    &Symbol::new(&env, "end_game"),
+                    soroban_sdk::vec![
+                        &env,
+                        session_id.into_val(&env),
+                        p1_won.into_val(&env)
+                    ],
+                );
+            }
         } else if game.p2_hits >= TOTAL_SHIP_CELLS {
             game.status = GameStatus::Complete;
             game.winner = 2;
@@ -301,6 +342,21 @@ impl BattleshipContract {
                 (symbol_short!("game"), symbol_short!("end")),
                 (game_id, 2u32),
             );
+
+            // Notify Hub if initialized
+            if let Some(hub) = env.storage().instance().get::<_, Address>(&DataKey::HubAddress) {
+                let session_id: u32 = game_id;
+                let p1_won = false;
+                env.invoke_contract::<()>(
+                    &hub,
+                    &Symbol::new(&env, "end_game"),
+                    soroban_sdk::vec![
+                        &env,
+                        session_id.into_val(&env),
+                        p1_won.into_val(&env)
+                    ],
+                );
+            }
         } else {
             // Switch turns
             game.current_turn = if game.current_turn == 1 { 2 } else { 1 };
